@@ -6,8 +6,11 @@ import os
 import sys
 import textwrap
 
-from plaid import Client
-from plaid import errors as plaid_errors
+import plaid
+from plaid.api import plaid_api
+from plaid import Configuration
+from plaid.model.transactions_get_request_options import TransactionsGetRequestOptions
+from plaid.model.transactions_get_request import TransactionsGetRequest
 
 import plaid2text.config_manager as cm
 from plaid2text.interact import prompt, clear_screen, NullValidator
@@ -22,7 +25,15 @@ class PlaidAccess():
         else:
             self.client_id, self.secret = cm.get_plaid_config()
 
-        self.client = Client(self.client_id, self.secret, "development", suppress_warnings=True)
+        plaid_conf = Configuration(
+            host=plaid.Environment.Development,
+            api_key = {
+                'clientId': self.client_id,
+                'secret': self.secret
+            }
+        )
+        api_client = plaid.ApiClient(plaid_conf)
+        self.client = plaid_api.PlaidApi(api_client)
 
     def get_transactions(self,
                          access_token,
@@ -37,22 +48,26 @@ class PlaidAccess():
         account_array = []
         account_array.append(account_ids)
         while True:
-            page += 1 
+            page += 1
             if total_transactions:
                 print("Fetching page %d, already fetched %d/%d transactions" % ( page, len(ret), total_transactions))
             else:
                 print("Fetching page 1")
 
             try:
-                response = self.client.Transactions.get(
-                                access_token,
-                                start_date.strftime("%Y-%m-%d"),
-                                end_date.strftime("%Y-%m-%d"),
-                                account_ids=account_array,
-                                offset=len(ret))
-            except plaid_errors.ItemError as ex:
+                options = TransactionsGetRequestOptions()
+                options.account_ids = account_array
+                options.offset = len(ret)
+                request = TransactionsGetRequest(
+                    access_token=access_token,
+                    start_date=start_date.date(),
+                    end_date=end_date.date(),
+                    options=options
+                )
+                response = self.client.transactions_get(request)
+            except plaid.ApiException as e:
                 print("Unable to update plaid account [%s] due to: " % account_ids, file=sys.stderr)
-                print("    %s" % ex, file=sys.stderr )
+                print("    %s" % e, file=sys.stderr)
                 sys.exit(1)
 
             total_transactions = response['total_transactions']

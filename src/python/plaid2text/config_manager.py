@@ -5,11 +5,16 @@ import configparser
 import os
 import sys
 
+from plaid import ApiClient, ApiException, Environment
+from plaid.api import plaid_api
 from plaid2text.interact import prompt, NullValidator, YesNoValidator
-from plaid import Client
-from plaid import errors as plaid_errors
-
-import json
+from plaid import Configuration
+from plaid.model.accounts_get_request import AccountsGetRequest
+from plaid.model.item_public_token_exchange_request import ItemPublicTokenExchangeRequest
+from plaid.model.link_token_create_request import LinkTokenCreateRequest
+from plaid.model.link_token_create_request_user import LinkTokenCreateRequestUser
+from plaid.model.products import Products
+from plaid.model.country_code import CountryCode
 
 
 class dotdict(dict):
@@ -173,7 +178,7 @@ def write_section(section_dict):
     config = _get_config_parser()
     try:
         config.read_dict(section_dict)
-    except Exception as e:
+    except Exception:
         raise
     else:
         with open(FILE_DEFAULTS.config_file, mode='w') as f:
@@ -190,7 +195,7 @@ def init_config():
         plaid['client_id'] = client_id
         secret = prompt('Enter your Plaid secret: ', validator=NullValidator())
         plaid['secret'] = secret
-    except Exception as e:
+    except Exception:
         return False
     else:
         with open(FILE_DEFAULTS.config_file, mode='w') as f:
@@ -225,40 +230,46 @@ def create_account(account):
         config[account] = OrderedDict()
         plaid = config[account]
         client_id, secret = get_plaid_config()
-        # client_id = prompt('Enter your Plaid client_id: ', validator=NullValidator())
-        # plaid['client_id'] = client_id
-        # secret = prompt('Enter your Plaid secret: ', validator=NullValidator())
-        # plaid['secret'] = secret
-        
-        configs = {
-            'user': {
-                'client_user_id': '123-test-user-id',
-            },
-            'products': ['transactions'],
-            'client_name': "Plaid Test App",
-            'country_codes': ['US'],
-            'language': 'en',
-        }
 
         # create link token
-        client = Client(client_id, secret, "development", suppress_warnings=True)
-        response = client.LinkToken.create(configs)
+        plaid_conf = Configuration(
+            host=Environment.Development,
+            api_key = {
+                'clientId': client_id,
+                'secret': secret
+            }
+        )
+        api_client = ApiClient(plaid_conf)
+        client = plaid_api.PlaidApi(api_client)
+        request = LinkTokenCreateRequest(
+            client_name="Plaid Test App",
+            country_codes=[CountryCode('US')],
+            language='en',
+            products=[Products('transactions')],
+            user=LinkTokenCreateRequestUser(
+                client_user_id='123-test-user-id'
+            ),
+        )
+        response = client.link_token_create(request)
         link_token = response['link_token']
 
         generate_auth_page(link_token)
         print("\n\nPlease open " + FILE_DEFAULTS.auth_file + " to authenticate your account with Plaid")
         public_token = prompt('Enter your public_token from the auth page: ', validator=NullValidator())
-        # plaid['public_token'] = public_token
 
-        response = client.Item.public_token.exchange(public_token)
-        access_token = response['access_token']
+        exch_request = ItemPublicTokenExchangeRequest(
+            public_token=public_token
+        )
+        exch_response = client.item_public_token_exchange(exch_request)
+        access_token = exch_response['access_token']
         plaid['access_token'] = access_token
-        item_id = response['item_id']
+        item_id = exch_response['item_id']
         plaid['item_id'] = item_id
 
-        response = client.Accounts.get(access_token)
+        acc_request = AccountsGetRequest(access_token=access_token)
+        acc_response = client.accounts_get(acc_request)
 
-        accounts = response['accounts']
+        accounts = acc_response['accounts']
 
         print("\n\nAccounts:\n")
         for item in accounts:
@@ -267,7 +278,7 @@ def create_account(account):
         account_id = prompt('\nEnter account_id of desired account: ', validator=NullValidator())
         plaid['account'] = account_id
 
-    except plaid_errors.ItemError as ex:
+    except ApiException as ex:
         print("    %s" % ex, file=sys.stderr )
         sys.exit(1)
     else:
