@@ -137,7 +137,7 @@ class OutputRenderer(metaclass=ABCMeta):
         if not self.map_file:
             return
 
-        with open(self.map_file, 'r', encoding='utf-8', newline='') as f:
+        with open(self.map_file, 'r', encoding='utf-8') as f:
             map_reader = csv.reader(f)
             for row in map_reader:
                 if len(row) > 1:
