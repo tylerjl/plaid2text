@@ -72,7 +72,14 @@ class PlaidAccess():
 
             total_transactions = response['total_transactions']
 
-            ret.extend(response['transactions'])
+            def scrub(doc):
+                r = doc.to_dict()
+                for k in ['date', 'datetime', 'authorized_date', 'authorized_datetime']:
+                    if k in r and r[k] is not None:
+                        r[k] = r[k].isoformat()
+                return r
+
+            ret.extend(list(map(scrub, response['transactions'])))
 
             if len(ret) >= total_transactions: break
 

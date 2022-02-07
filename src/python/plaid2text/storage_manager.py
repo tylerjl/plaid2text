@@ -58,8 +58,6 @@ class MongoDBStorage(StorageManager):
             id = t['transaction_id']
             # t.update(TEXT_DOC)
             # Convert datetime
-            y, m, d = [int(i) for i in t['date'].split('-')]
-            t['date'] = datetime.datetime(y, m, d)
             doc = {'$set': t}
             # Add default plaid2text to new inserts
             doc['$setOnInsert'] = TEXT_DOC
@@ -123,7 +121,7 @@ class SQLiteStorage():
         """
         for t in transactions:
             trans_id = t['transaction_id']
-            act_id   = t['account_id'] 
+            act_id   = t['account_id']
 
             metadata = t.get('plaid2text', None)
             if metadata is not None:
