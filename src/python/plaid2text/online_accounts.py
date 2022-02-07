@@ -75,8 +75,8 @@ class PlaidAccess():
             def scrub(doc):
                 r = doc.to_dict()
                 for k in ['date', 'datetime', 'authorized_date', 'authorized_datetime']:
-                    if k in r and r[k] is not None:
-                        r[k] = r[k].isoformat()
+                    if k in r and isinstance(r[k], datetime.date):
+                        r[k] = datetime.datetime.combine(r[k], datetime.time.min)
                 return r
 
             ret.extend(list(map(scrub, response['transactions'])))

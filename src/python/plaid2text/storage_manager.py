@@ -78,14 +78,14 @@ class MongoDBStorage(StorageManager):
         transactions = self.account.find(query).sort('date', ASCENDING)
         return list(transactions)
 
-    def update_transaction(self, update, mark_pulled=None):
+    def update_transaction(self, update, mark_pulled=False):
         id = update.pop('transaction_id')
 
         if mark_pulled:
-            update['pulled_to_file'  ] = mark_pulled            
+            update['pulled_to_file'] = mark_pulled
         update['date_last_pulled'] = datetime.datetime.today()
 
-        self.account.update(
+        self.account.update_one(
             {'_id': id},
             {'$set': {"plaid2text": update}}
         )
@@ -181,10 +181,10 @@ class SQLiteStorage():
 
         return ret
 
-    def update_transaction(self, update, mark_pulled=None):
+    def update_transaction(self, update, mark_pulled=False):
         trans_id = update.pop('transaction_id')
         if mark_pulled:
-            update['pulled_to_file'  ] = mark_pulled            
+            update['pulled_to_file'] = mark_pulled
         update['date_last_pulled'] = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
 
         update['archived'] = null
