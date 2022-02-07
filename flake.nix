@@ -19,7 +19,7 @@
       };
     in {
       devShell = app.env.overrideAttrs (old: {
-        buildInputs = with pkgs ; [ poetry gcc pyright ];
+        buildInputs = with pkgs ; [ hub poetry gcc pyright ];
         shellHook = ''
            export PYTHONPATH="./src/python"
         '';
