@@ -158,6 +158,15 @@ def _parse_args_and_config_file():
     )
 
     parser.add_argument(
+        '--update-link',
+        action='store_true',
+        help=(
+            'reauthenticate account'
+            ' (default : {0})'.format(cm.CONFIG_DEFAULTS.create_account)
+        )
+    )
+
+    parser.add_argument(
         '--output-format',
         '-o',
         choices=['beancount', 'ledger'],
@@ -419,6 +428,13 @@ def main():
             options.plaid_account,
             options.posting_account
         )
+
+    if options.update_link:
+        ret = PlaidAccess().update_link(options.access_token)
+        cm.generate_auth_page(ret['link_token'])
+        print("\n\nPlease open " + cm.FILE_DEFAULTS.auth_file + " to re-authenticate your account with Plaid")
+        print("Link updated")
+        sys.exit(0)
 
     if options.download_transactions:
         if 'to_date' not in options or 'from_date' not in options:

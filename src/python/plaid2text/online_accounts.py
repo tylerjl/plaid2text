@@ -8,9 +8,14 @@ import textwrap
 
 import plaid
 from plaid.api import plaid_api
-from plaid import Configuration
+from plaid import Configuration, Environment
+from plaid.exceptions import ApiException
+from plaid.model.link_token_create_request import LinkTokenCreateRequest
+from plaid.model.link_token_create_request_user import LinkTokenCreateRequestUser
 from plaid.model.transactions_get_request_options import TransactionsGetRequestOptions
 from plaid.model.transactions_get_request import TransactionsGetRequest
+from plaid.model.products import Products
+from plaid.model.country_code import CountryCode
 
 import plaid2text.config_manager as cm
 from plaid2text.interact import prompt, clear_screen, NullValidator
@@ -86,3 +91,22 @@ class PlaidAccess():
         print("Downloaded %d transactions for %s - %s" % ( len(ret), start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")))
 
         return ret
+
+    def update_link(self, access_token):
+        request = LinkTokenCreateRequest(
+            client_name="Plaid Test App",
+            country_codes=[CountryCode('US')],
+            language='en',
+            access_token=access_token,
+            user=LinkTokenCreateRequestUser(
+                client_user_id='123-test-user-id'
+            ),
+        )
+        try:
+            response = self.client.link_token_create(request)
+        except ApiException as ex:
+            print("Unable to update link due to: ", file=sys.stderr)
+            print("    %s" % ex, file=sys.stderr )
+            sys.exit(1)
+
+        return response;
